@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangChain — Mental Model Reference</title>
+<style>
+  /* ── RESET & BASE ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* Color System */
+    --bg:           #F7F6F2;
+    --surface:      #FFFFFF;
+    --border:       #E0DED8;
+    --text:         #1A1916;
+    --text-muted:   #6B6860;
+
+    /* Pipeline — Indigo family */
+    --pipe:         #3B4FBF;
+    --pipe-light:   #EEF0FB;
+    --pipe-mid:     #8B99E0;
+
+    /* Failure — Coral/Red */
+    --fail:         #D85A30;
+    --fail-light:   #FDF0EB;
+
+    /* Distinction — Teal */
+    --dist:         #1A8C7A;
+    --dist-light:   #E8F6F4;
+
+    /* Heuristic — Amber */
+    --heur:         #B87010;
+    --heur-light:   #FDF6E8;
+
+    /* Typography */
+    --font: 'Georgia', 'Times New Roman', serif;
+    --mono: 'Courier New', Courier, monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 0 0 80px 0;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--text);
+    color: #F7F6F2;
+    padding: 56px 64px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(59,79,191,0.18);
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: 30%;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(216,90,48,0.12);
+  }
+  .hero-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--pipe-mid);
+    margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-size: 42px;
+    font-weight: normal;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .hero-sub {
+    color: #A8A59E;
+    font-size: 16px;
+    margin-bottom: 36px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 980px; margin: 0 auto; padding: 0 40px; }
+
+  /* ── SECTION HEADERS ── */
+  .section {
+    margin-top: 64px;
+  }
+  .section-header {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+  .card-pipe  { border-left: 4px solid var(--pipe); }
+  .card-fail  { border-left: 4px solid var(--fail); background: var(--fail-light); }
+  .card-dist  { border-left: 4px solid var(--dist); }
+  .card-heur  { border-left: 4px solid var(--heur); background: var(--heur-light); }
+
+  .card h3 {
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .card p { color: #3A3835; font-size: 14px; line-height: 1.65; }
+  .card p + p { margin-top: 8px; }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .pipe-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--pipe);
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+  .pipe-node h3 {
+    color: var(--pipe);
+    font-size: 14px;
+    font-family: var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pipe-node p { font-size: 14px; color: #3A3835; line-height: 1.6; }
+  .pipe-node .meta {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+  .pipe-arrow {
+    text-align: center;
+    color: var(--pipe-mid);
+    font-size: 22px;
+    line-height: 1;
+    padding: 4px 0;
+  }
+
+  /* ── COMPARISON CARD ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .compare-left {
+    background: var(--fail-light);
+    border: 1px solid #F0C4B0;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .compare-right {
+    background: var(--dist-light);
+    border: 1px solid #A8DDD6;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .compare-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+  .compare-left .compare-label { color: var(--fail); }
+  .compare-right .compare-label { color: var(--dist); }
+  .compare-left p, .compare-right p { font-size: 13.5px; line-height: 1.6; }
+
+  /* ── TABLES ── */
+  .table-wrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    background: var(--surface);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  th {
+    background: var(--text);
+    color: #F7F6F2;
+    padding: 11px 16px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: normal;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #FAFAF8; }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+  .tag-pipe { background: var(--pipe-light); color: var(--pipe); }
+  .tag-fail { background: var(--fail-light); color: var(--fail); }
+  .tag-dist { background: var(--dist-light); color: var(--dist); }
+
+  /* ── HEURISTIC GRID ── */
+  .heuristic-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .heuristic-card {
+    background: var(--heur-light);
+    border: 1px solid #E8CC9A;
+    border-left: 4px solid var(--heur);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .heuristic-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--heur);
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .heuristic-card p { font-size: 13.5px; line-height: 1.6; color: #3A3835; }
+  .heuristic-card strong { color: var(--text); }
+
+  /* ── CODE BLOCK ── */
+  .code {
+    background: #1A1916;
+    color: #C8C4BC;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 18px 22px;
+    border-radius: 8px;
+    margin: 10px 0;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code .c-blue  { color: #8B99E0; }
+  .code .c-coral { color: #E8896A; }
+  .code .c-teal  { color: #6DC8BC; }
+  .code .c-amber { color: #D4A855; }
+  .code .c-muted { color: #6B6860; }
+
+  /* ── FAIL CARDS ── */
+  .fail-card {
+    background: var(--fail-light);
+    border: 1px solid #F0C4B0;
+    border-left: 4px solid var(--fail);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+  }
+  .fail-card h3 {
+    color: var(--fail);
+    font-size: 14px;
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .fail-card p { font-size: 13.5px; line-height: 1.6; color: #3A3835; }
+  .fail-meta {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .fail-meta span {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(216,90,48,0.12);
+    color: var(--fail);
+    letter-spacing: 0.06em;
+  }
+
+  /* ── GLOSSARY ── */
+  .glossary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .gloss-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .gloss-term {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--pipe);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .gloss-def { font-size: 13px; color: #3A3835; line-height: 1.5; }
+
+  /* ── FOOTER ── */
+  footer {
+    margin-top: 80px;
+    padding: 24px 40px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    .hero { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .section { page-break-inside: avoid; }
+    .pipe-node, .fail-card, .heuristic-card { page-break-inside: avoid; }
+  }
+
+  @media (max-width: 700px) {
+    .hero { padding: 36px 24px; }
+    .hero h1 { font-size: 28px; }
+    .container { padding: 0 20px; }
+    .compare-grid, .heuristic-grid, .glossary-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     A. HERO HEADER
+══════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-label">DeepLearning.AI · Harrison Chase & Andrew Ng</div>
+  <h1>LangChain for LLM<br>Application Development</h1>
+  <div class="hero-sub">7 Modules · Complete Mental Model Reference · June 2025</div>
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#3B4FBF"></div>
+      Pipeline & Architecture
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#D85A30"></div>
+      Failure Modes
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#1A8C7A"></div>
+      Key Distinctions
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#B87010"></div>
+      Decision Heuristics
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════
+     B. THE CORE PROBLEM
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">B · The Core Problem</div>
+
+  <div class="card card-pipe">
+    <h3>What problem does LangChain solve?</h3>
+    <p>Building real LLM applications requires far more than a single prompt and response. Every developer building on top of OpenAI or Claude was independently writing the same scaffolding: conversation memory management, document chunking and retrieval, output parsing from text to usable data structures, multi-step prompt pipelines, and external tool connections. This scaffolding was fragile, unreusable, and rebuilt from scratch for every new project.</p>
+    <p>LangChain packages all of that scaffolding into composable, battle-tested building blocks. It is not a smarter model. It is the operating system around the model — expanding what you can build without changing the model's underlying intelligence.</p>
+  </div>
+
+  <div class="compare-grid">
+    <div class="compare-left">
+      <div class="compare-label">❌ Without LangChain — Ad-hoc</div>
+      <p>Custom glue code per project. Manual string concatenation for prompts. Manual JSON parsing on every LLM call. Custom memory management. No retrieval layer. Each project starts from zero. Fragile when LLM changes response phrasing.</p>
+    </div>
+    <div class="compare-right">
+      <div class="compare-label">✓ With LangChain — Systematic</div>
+      <p>Reusable Prompt Templates. Output Parsers that auto-convert text to data. Four memory strategies to choose from. Vector DB retrieval built-in. Chains for workflow composition. Agents for dynamic reasoning. Compose once, reuse forever.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>The Key Reframe</h3>
+    <p>The LLM is a brilliant consultant who works only in a single meeting room — zero memory between sessions, can only see what's on the table, cannot fetch external files. <strong>LangChain is the operating system around that consultant:</strong> bringing the right files into the room, injecting conversation history, routing questions to the right specialist, and stitching multi-step workflows together automatically.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     C. COMPLETE PIPELINE / ARCHITECTURE
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">C · The Complete Architecture</div>
+
+  <div class="pipeline">
+
+    <div class="pipe-node">
+      <h3>01 · User Input</h3>
+      <p>A question, command, or document from the user. The entry point. Can be plain text, a structured form input, or a long document. This is the raw material everything else acts on.</p>
+      <div class="meta">→ Passed to Agent (if dynamic) or directly to Chain (if fixed workflow)</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>02 · Agent — Dynamic Reasoning Engine</h3>
+      <p>Uses the LLM as a reasoning engine that decides <em>what to do next</em> rather than following a fixed script. Implements the ReAct loop: Thought → Action → Observation → Thought → ... → Answer. The loop runs as many times as needed until the agent is confident it can answer.</p>
+      <p>Agents are used when the steps required to answer cannot be predetermined. If steps are known upfront, use a Chain instead.</p>
+      <div class="meta">→ Selects and calls Tools based on their plain-English descriptions</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>03 · Tools — External Capabilities</h3>
+      <p>Any function wrapped with a name and a plain-English description. The Agent reads descriptions to decide which tool to use and when. Built-in tools include web search, Wikipedia, and calculators. Custom tools wrap any API, database, CRM, or internal function you expose. The quality of the description determines the quality of tool usage.</p>
+      <div class="meta">Built-in: web_search, wikipedia, calculator · Custom: any wrapped function</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>04 · Chains — Structured Workflows</h3>
+      <p><strong>LLM Chain:</strong> Atomic unit. One prompt + one LLM call = one output. The building block for everything else. <strong>Sequential Chain:</strong> Multiple LLM Chains in sequence. Simple variant passes single I/O down the line. Full variant allows any step to pull from any earlier step. <strong>Router Chain:</strong> LLM reads input and decides which subchain to route to — a smart switchboard using descriptions of each destination to route intelligently.</p>
+      <div class="meta">→ Output of one step automatically becomes input of the next. No manual piping.</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>05 · Vector DB Retrieval — Document QA</h3>
+      <p><strong>Indexing (once upfront):</strong> Document → Chunking (mechanical splitting) → Embedding Model (converts each chunk to a vector of ~1500 numbers encoding meaning) → Vector Database. <strong>Retrieval (every query):</strong> Question → Embed → Compare against all chunk vectors → Return top-k most semantically similar chunks → Feed to LLM.</p>
+      <p>Embeddings encode meaning, not words. "The puppy ran after the sphere" and "The dog chased the ball" produce numerically close vectors despite sharing zero words. This semantic search finds relevance that keyword search misses entirely.</p>
+      <div class="meta">Retrieval methods: Stuff · Map Reduce · Refine · Map Rerank</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>06 · Memory — Conversation Continuity</h3>
+      <p>LLMs are completely stateless. Every API call is a blank slate. "Memory" is an illusion — conversation history is injected into every new prompt behind the scenes. Four strategies manage the cost/detail tradeoff: Buffer (keep all), Window (keep last k), Token Buffer (keep to token limit), Summary (LLM compresses history). Production apps combine strategies for different needs.</p>
+      <div class="meta">Injected as context into every new prompt call</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>07 · Prompt Templates — Structured Input</h3>
+      <p>Prompts with named variable slots defined once, reused forever. Instead of manually concatenating strings, you declare a structure and fill slots. Prompt Templates and Output Parsers are designed as a coupled pair — the Parser tells the Template exactly what instructions to embed so the LLM responds in a format the Parser can reliably process.</p>
+      <div class="meta">→ Sent to the LLM as a formatted prompt</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>08 · LLM — The Model</h3>
+      <p>The language model itself (GPT-4, Claude, etc.). Always returns plain text. Always. No exceptions. Even when the response looks exactly like JSON, it is 38 characters of plain text — not a data structure. The LLM describes data; it does not hand you data. Treat every LLM response as a photograph of information, not the information itself.</p>
+      <div class="meta">→ Returns text to the Output Parser</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>09 · Output Parser — Text → Usable Data</h3>
+      <p>Converts the LLM's text response into a real data structure the application can act on. Like converting a photograph of a filing cabinet into an actual cabinet with openable drawers. Before parsing: `response["is_gift"]` crashes because response is a string. After parsing: `response["is_gift"]` returns `True` — the drawer opens. Without a parser, apps must write fragile custom text-extraction code that breaks whenever the LLM slightly changes phrasing.</p>
+      <div class="meta">→ Returns dictionary / structured data to the application</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-node">
+      <h3>10 · Evaluation Layer</h3>
+      <p>LLM outputs cannot be verified by exact string matching — infinite valid phrasings exist for every correct answer. LangChain uses a second LLM (the Eval Chain) to grade outputs semantically. Pipeline: generate Q&amp;A test pairs (manually or auto-generated) → run QA chain → Eval LLM grades correct/incorrect. The debug layer (`langchain.debug`) exposes every internal step: exact prompt sent, chunks retrieved, tokens used, raw output before parsing.</p>
+      <div class="meta">Key insight: wrong answers almost always = bad retrieval, not bad LLM</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     D. FAILURE MODES
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">D · Failure Modes</div>
+
+  <div class="fail-card">
+    <h3>Photograph vs. Cabinet — Missing Output Parser</h3>
+    <p>The LLM returns text that looks like JSON. The application tries to access a key: `response["is_gift"]`. The app crashes. No error in the LLM — it did exactly what was asked. The failure is in assuming text = data structure. The LLM always returns a string. Always. The parser was skipped.</p>
+    <div class="fail-meta">
+      <span>MODULE 2</span>
+      <span>SILENT UNTIL RUNTIME</span>
+      <span>Prevention: Always pair Prompt Template with Output Parser</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Context Window Breach — Memory Unbounded</h3>
+    <p>Buffer Memory keeps the entire conversation verbatim. A long support conversation eventually exceeds the LLM's maximum token window. Oldest messages are silently dropped. The model now cannot see critical information mentioned early in the conversation. User says "the first issue I mentioned" — the LLM has no memory of it. No error fires. Answers become subtly wrong.</p>
+    <div class="fail-meta">
+      <span>MODULE 3</span>
+      <span>SILENT</span>
+      <span>Prevention: Use Window, Token Buffer, or Summary Memory for long conversations</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Detail Loss in Summary Memory</h3>
+    <p>Summary Memory uses an LLM to compress conversation history. LLMs summarise by compressing — specific details quietly disappear. A case number, exact date, specific clause, or precise figure mentioned early in the conversation survives human note-taking but evaporates in AI summarisation. Application appears to work but gives subtly wrong answers referencing lost details.</p>
+    <div class="fail-meta">
+      <span>MODULE 3</span>
+      <span>SILENT</span>
+      <span>Prevention: Combine Summary Memory with explicit key-fact store for critical details</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Key Name Mismatch — Sequential Chain Crash</h3>
+    <p>Sequential Chain requires exact matching of output key names to input key names across steps. Step 2 outputs `english_review`. Step 3 expects `englishReview`. Hard crash. No graceful degradation. This failure is particularly common when chains are assembled from components built at different times.</p>
+    <div class="fail-meta">
+      <span>MODULE 4</span>
+      <span>NON-SILENT — HARD CRASH</span>
+      <span>Prevention: Define and document all key names before wiring steps together</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Wrong Chunks Retrieved — Silent Wrong Answers</h3>
+    <p>The most common failure in document QA. Chunks about pricing are retrieved for architecture questions because the embedding similarity is high enough to pass the threshold but semantically misaligned. The LLM generates a confident, well-structured answer — based entirely on the wrong context. No error fires. The answer looks correct until a domain expert reviews it.</p>
+    <div class="fail-meta">
+      <span>MODULE 5</span>
+      <span>SILENT — MOST DANGEROUS</span>
+      <span>Prevention: Smaller focused chunks, debug layer inspection, evaluation pipeline</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Token Window Overload — Stuff Method Fails</h3>
+    <p>The Stuff retrieval method feeds all retrieved chunks into one prompt. For complex documents requiring 10+ chunks, this exceeds the token window. The LLM either truncates context silently or the API call fails. The application either crashes or produces answers based on incomplete context with no indication of which.</p>
+    <div class="fail-meta">
+      <span>MODULE 5</span>
+      <span>SILENT TRUNCATION OR HARD CRASH</span>
+      <span>Prevention: Use Map Reduce or Refine for large document sets</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Exact Match Evaluation — False Failures</h3>
+    <p>Automated evaluation using string matching marks semantically correct answers as incorrect. Ground truth: "Yes". LLM answer: "Based on the documentation, water damage is indeed covered." String match returns False. System reports 0% accuracy on questions it answered correctly. Engineering team chases a non-existent problem.</p>
+    <div class="fail-meta">
+      <span>MODULE 6</span>
+      <span>NON-SILENT — MISLEADING METRICS</span>
+      <span>Prevention: Always use LLM-as-evaluator (Eval Chain), never exact string matching</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Agent Mid-Loop Failure — Non-Determinism</h3>
+    <p>An agent searching for current information concludes mid-loop that an event "hasn't happened yet" — then corrects itself after an additional search. On identical inputs, agents may take different paths, use different tools, or reach different conclusions. In high-stakes applications (legal, medical, financial) this non-determinism produces unreliable outputs without any error signal.</p>
+    <div class="fail-meta">
+      <span>MODULE 7</span>
+      <span>SILENT — INCONSISTENT OUTPUTS</span>
+      <span>Prevention: Guardrails + human-in-the-loop checkpoints + bounded tool access for high-stakes cases</span>
+    </div>
+  </div>
+
+  <div class="fail-card">
+    <h3>Bad Tool Description — Tool Ignored or Misused</h3>
+    <p>An Agent decides which tool to use by reading the plain-English description of each tool. A vague or poorly written description causes the agent to ignore a relevant tool entirely or call it with the wrong input. The agent proceeds without the data it needed — producing confidently wrong answers with no error.</p>
+    <div class="fail-meta">
+      <span>MODULE 7</span>
+      <span>SILENT</span>
+      <span>Prevention: Write precise, specific tool descriptions including exact input format requirements</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     E. KEY DISTINCTIONS
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">E · Key Distinctions</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Chains</th>
+          <th>Agents</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Path</td><td>Fixed upfront</td><td>Decided at runtime</td></tr>
+        <tr><td>Determinism</td><td>Deterministic — same input, same path</td><td>Non-deterministic — path varies</td></tr>
+        <tr><td>Steps</td><td>Known before execution</td><td>Unknown, decided during loop</td></tr>
+        <tr><td>Use when</td><td>Workflow steps are predictable</td><td>Steps depend on what question requires</td></tr>
+        <tr><td>Risk</td><td>Key name mismatch, token overflow</td><td>Mid-loop failure, inconsistent outputs</td></tr>
+        <tr><td>High-stakes use</td><td>Safe with proper validation</td><td>Needs guardrails + HITL checkpoints</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>LLM Text Response</th>
+          <th>Parsed Dictionary</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>What it is</td><td>A string of characters</td><td>A data structure in memory</td></tr>
+        <tr><td>Analogy</td><td>Photograph of a filing cabinet</td><td>Actual filing cabinet</td></tr>
+        <tr><td>Access specific value</td><td>Cannot — crashes</td><td>response["key"] works</td></tr>
+        <tr><td>Route application logic</td><td>Cannot without fragile text-parsing</td><td>Directly — if value == True</td></tr>
+        <tr><td>Store in database</td><td>Store as blob only</td><td>Store individual fields cleanly</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Chunking</th>
+          <th>Embedding</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>What it does</td><td>Splits document into smaller pieces</td><td>Converts text to vector of numbers</td></tr>
+        <tr><td>AI involved?</td><td>No — purely mechanical</td><td>Yes — embedding model</td></tr>
+        <tr><td>Output</td><td>Smaller text segments</td><td>List of ~1500 numbers per chunk</td></tr>
+        <tr><td>Encodes meaning?</td><td>No</td><td>Yes — semantically similar text = numerically close vectors</td></tr>
+        <tr><td>Happens when</td><td>First, during indexing</td><td>Second, after chunking</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Memory Type</th>
+          <th>What It Keeps</th>
+          <th>Main Weakness</th>
+          <th>Best For</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Buffer</td><td>Everything verbatim</td><td>Token ceiling breach at scale</td><td>Short conversations</td></tr>
+        <tr><td>Window (k)</td><td>Last k exchanges only</td><td>Forgets early context permanently</td><td>Recent-context-only apps</td></tr>
+        <tr><td>Token Buffer</td><td>Up to token limit, drop oldest</td><td>Same early-context loss as Window</td><td>Cost-sensitive applications</td></tr>
+        <tr><td>Summary</td><td>LLM-generated summary of history</td><td>Detail loss — specific facts disappear</td><td>Long conversations, gist matters</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Retrieval Method</th>
+          <th>How It Works</th>
+          <th>Speed</th>
+          <th>Best For</th>
+          <th>Fails When</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Stuff</td><td>All chunks in one prompt, one LLM call</td><td>Fastest</td><td>Small retrievals, simple questions</td><td>Chunks exceed token window</td></tr>
+        <tr><td>Map Reduce</td><td>Each chunk separately (parallel), then synthesise</td><td>Fast (parallel)</td><td>Large volume, speed matters</td><td>Sections interconnect and reference each other</td></tr>
+        <tr><td>Refine</td><td>Sequential, each chunk builds on previous answer</td><td>Slowest</td><td>Complex synthesis, cross-section dependencies</td><td>Time-sensitive applications</td></tr>
+        <tr><td>Map Rerank</td><td>Each chunk separately, LLM scores confidence, return highest</td><td>Medium</td><td>Single best answer needed</td><td>Answer spans multiple sections</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Regular Database</th>
+          <th>Vector Database</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Search method</td><td>Exact keyword match</td><td>Semantic similarity (cosine)</td></tr>
+        <tr><td>Finds synonyms?</td><td>No</td><td>Yes — same meaning, different words</td></tr>
+        <tr><td>Finds paraphrases?</td><td>No</td><td>Yes — numerically close vectors</td></tr>
+        <tr><td>Stores</td><td>Raw text, numbers, structured data</td><td>Vectors (lists of numbers)</td></tr>
+        <tr><td>Best for</td><td>Exact lookups, structured queries</td><td>Semantic document retrieval</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     F. DECISION HEURISTICS
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">F · Decision Heuristics</div>
+  <div class="heuristic-grid">
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 01</div>
+      <p><strong>If you know all the steps upfront — use a Chain.</strong> If the steps depend on what the question requires — use an Agent. Never use an Agent when a Chain will do. Agents introduce non-determinism that Chains avoid entirely.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 02</div>
+      <p><strong>Every LLM response is a string. Always.</strong> Never assume the output is JSON, a list, or any other type. If your app needs structured data, an Output Parser is mandatory — not optional. No exceptions.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 03</div>
+      <p><strong>Wrong answer = bad retrieval, not bad LLM.</strong> When a QA system returns incorrect answers, inspect the retrieved chunks before touching the prompt or the model. 80% of the time, the wrong chunks were fetched. Fix retrieval first.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 04</div>
+      <p><strong>Never evaluate LLM output with exact string matching.</strong> Always use an Eval Chain (LLM-as-evaluator) for semantic grading. Exact matching marks correct answers as failures and produces meaningless accuracy metrics.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 05</div>
+      <p><strong>For synthesis across multiple sections — use Refine, not Stuff.</strong> Stuff breaks at scale. Map Reduce misses cross-section dependencies. Refine builds context iteratively — the only method that accumulates understanding across interconnected sections.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 06</div>
+      <p><strong>High-stakes applications never use Summary Memory alone.</strong> Always pair it with an explicit key-fact store for critical details (case numbers, dates, specific figures). LLM summaries silently drop precision — your application cannot tell what was lost.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 07</div>
+      <p><strong>Tool descriptions are as important as tool logic.</strong> An Agent with a perfectly coded tool but a vague description will ignore the tool entirely. Write descriptions as instructions to the LLM: what the tool does, when to use it, what exact format the input must be.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 08</div>
+      <p><strong>If routing is needed — use a Router Chain, not conditional code.</strong> Encoding routing logic as if/else in application code breaks every time a new category is added. Router Chain uses LLM to decide dynamically — add a new destination by adding a description, not rewriting code.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 09</div>
+      <p><strong>Smaller chunks = better retrieval precision.</strong> Chunks that mix multiple topics produce vectors representing nothing well. Each chunk should cover exactly one concept so its vector cleanly represents that concept's meaning space.</p>
+    </div>
+
+    <div class="heuristic-card">
+      <div class="heuristic-num">RULE 10</div>
+      <p><strong>Production apps combine memory strategies.</strong> No single memory type handles all requirements. Use Summary Memory for conversation flow + Buffer or explicit store for facts that must never be lost. Design memory architecture like you design a database schema.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     G. MODULE REFERENCE TABLE
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">G · Module Reference Table</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Module</th>
+          <th>Core Takeaway</th>
+          <th>Primary Failure Risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-pipe">01</span></td>
+          <td><strong>The Big Picture</strong></td>
+          <td>LangChain is the OS around the model — not a smarter model. It packages scaffolding developers were rewriting from scratch into composable building blocks.</td>
+          <td>Mistaking LangChain for a model upgrade rather than a development framework</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-pipe">02</span></td>
+          <td><strong>Models, Prompts & Parsers</strong></td>
+          <td>LLMs always return text. Output Parsers convert text into usable data. Prompt Templates and Parsers are a coupled pair — design them together.</td>
+          <td>Skipping the Output Parser and trying to use text as a data structure</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-pipe">03</span></td>
+          <td><strong>Memory</strong></td>
+          <td>LLMs are stateless. Memory is injected history. Four strategies manage the cost/detail tradeoff — production apps combine them.</td>
+          <td>Buffer Memory hitting token ceiling; Summary Memory silently losing critical details</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-pipe">04</span></td>
+          <td><strong>Chains</strong></td>
+          <td>LLM + Sequential + Router chains compose reusable application architecture. Fixed path, predictable, composable. Use when steps are known upfront.</td>
+          <td>Key name mismatch crashes in Sequential Chain; using Chain when Agent is needed</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-pipe">05</span></td>
+          <td><strong>QA over Documents</strong></td>
+          <td>Embed documents once, retrieve semantically on every query. Wrong answers = bad retrieval, not bad LLM. Choose retrieval method based on synthesis requirement.</td>
+          <td>Wrong chunks retrieved silently; Stuff method overflowing token window</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-pipe">06</span></td>
+          <td><strong>Evaluation</strong></td>
+          <td>Exact string matching is useless for LLM evaluation. Use LLM-as-evaluator for semantic grading. Debug layer isolates where in the chain failures occur.</td>
+          <td>Exact match producing false failure metrics; not using debug layer to isolate failures</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-pipe">07</span></td>
+          <td><strong>Agents</strong></td>
+          <td>LLM as dynamic reasoning engine. ReAct loop: Thought→Action→Observation. Non-deterministic — powerful for open-ended tasks, risky for high-stakes decisions.</td>
+          <td>Mid-loop failures; bad tool descriptions; no guardrails in high-stakes applications</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     H. TERMINOLOGY GLOSSARY
+══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">H · Terminology Glossary</div>
+  <div class="glossary-grid">
+
+    <div class="gloss-item">
+      <div class="gloss-term">Agent</div>
+      <div class="gloss-def">A LangChain component that uses an LLM as a dynamic reasoning engine, deciding which tools to call and in what order at runtime rather than following a fixed path.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Chain</div>
+      <div class="gloss-def">A sequence of LLM operations where the output of one step automatically becomes the input of the next, following a fixed path defined before execution.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Chunking</div>
+      <div class="gloss-def">The mechanical process of splitting a large document into smaller text segments before embedding. No AI involved — purely a splitting operation.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Embedding</div>
+      <div class="gloss-def">The conversion of text into a vector (list of ~1500 numbers) that encodes semantic meaning. Semantically similar text produces numerically close vectors.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Eval Chain</div>
+      <div class="gloss-def">A LangChain component that uses an LLM to evaluate another LLM's output, judging semantic correctness rather than exact string match.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">LLM Chain</div>
+      <div class="gloss-def">The atomic building block of LangChain — a single Prompt Template combined with a single LLM call producing a single output.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Map Reduce</div>
+      <div class="gloss-def">A retrieval method that processes each document chunk independently in parallel (map), then synthesises all individual answers into a final response (reduce).</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Output Parser</div>
+      <div class="gloss-def">A LangChain component that converts the LLM's plain text response into a usable data structure (dictionary, list, etc.) that the application can act on programmatically.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Prompt Template</div>
+      <div class="gloss-def">A reusable prompt structure with named variable slots. Defined once, reused by filling slots with different inputs — eliminates manual string concatenation.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">ReAct Loop</div>
+      <div class="gloss-def">The Agent reasoning pattern: Thought (what do I need?) → Action (use a tool) → Observation (what did I get?) → repeat until the agent can answer confidently.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Refine</div>
+      <div class="gloss-def">A retrieval method that processes chunks sequentially, each iteration building on the previous answer — best for complex synthesis where sections reference each other.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Retrieval QA</div>
+      <div class="gloss-def">The pattern of embedding documents, storing vectors, retrieving top-k semantically similar chunks on each query, and passing those chunks to an LLM to generate a grounded answer.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Router Chain</div>
+      <div class="gloss-def">A chain type that uses an LLM to read input and decide which specialist subchain to route it to, based on plain-English descriptions of each destination.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Stateless</div>
+      <div class="gloss-def">The property of LLMs where every API call starts with zero memory of previous calls. Each request is completely independent — the model has no inherent continuity.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Stuff Method</div>
+      <div class="gloss-def">The simplest retrieval method: all retrieved chunks are combined into one prompt and sent in a single LLM call. Fast but fails when chunks exceed the token window.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Tool</div>
+      <div class="gloss-def">Any function wrapped with a name and plain-English description that an Agent can call. The description tells the LLM when and how to use it — quality of description determines quality of tool usage.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Token Window</div>
+      <div class="gloss-def">The hard maximum limit on how much text an LLM can process in a single call. Exceeding this limit causes content to be silently truncated or the API call to fail.</div>
+    </div>
+
+    <div class="gloss-item">
+      <div class="gloss-term">Vector Database</div>
+      <div class="gloss-def">A database that stores vectors (numerical representations of text meaning) and supports semantic similarity search — finding documents by meaning, not exact keyword match.</div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<footer>
+  LangChain for LLM Application Development &nbsp;·&nbsp; 7 Modules &nbsp;·&nbsp; Generated with Claude
+</footer>
+
+</body>
+</html>
