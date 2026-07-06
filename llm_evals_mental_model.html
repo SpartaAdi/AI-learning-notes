@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LLM Evals — Mental Model Reference</title>
+<style>
+  :root {
+    --bg: #F7F6F2;
+    --card: #ffffff;
+    --border: #E0DED8;
+    --ink: #2A2823;
+    --muted: #6B675F;
+    --pipeline: #2F5D62;      /* teal — architecture/pipeline */
+    --pipeline-bg: #EAF1F1;
+    --failure: #B4442E;       /* coral/red — failure modes */
+    --failure-bg: #FBEBE7;
+    --distinction: #6B4F8C;   /* purple — distinctions */
+    --distinction-bg: #F1ECF6;
+    --accent-gold: #A67C2E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.55;
+    font-size: 15.5px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 24px 60px; }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, #22403f 0%, #2F5D62 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 40px 36px;
+    margin-bottom: 32px;
+  }
+  .hero h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.5px; }
+  .hero .sub { color: #cfe3e0; font-size: 15px; margin-bottom: 22px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #eef5f4; }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+
+  /* SECTION HEADERS */
+  h2.section {
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin: 48px 0 20px;
+    font-weight: 700;
+  }
+  h2.section .idx { color: var(--accent-gold); margin-right: 8px; }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .card h3 { margin: 0 0 8px; font-size: 15.5px; }
+  .card p { margin: 0 0 8px; color: var(--ink); }
+  .card p:last-child { margin-bottom: 0; }
+  .card.pipeline { border-left: 4px solid var(--pipeline); }
+  .card.failure { border-left: 4px solid var(--failure); background: var(--failure-bg); }
+  .card.heuristic { border-left: 4px solid var(--accent-gold); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+  }
+  .tag.pipeline { background: var(--pipeline-bg); color: var(--pipeline); }
+  .tag.failure { background: #f5d9d1; color: var(--failure); }
+  .tag.distinction { background: var(--distinction-bg); color: var(--distinction); }
+
+  /* COMPARISON: naive vs systematic */
+  .compare-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .compare-col { padding: 18px 20px; }
+  .compare-col.naive { background: var(--failure-bg); border-right: 1px solid var(--border); }
+  .compare-col.systematic { background: var(--pipeline-bg); }
+  .compare-col h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .compare-col.naive h4 { color: var(--failure); }
+  .compare-col.systematic h4 { color: var(--pipeline); }
+  @media (max-width: 700px) { .compare-card { grid-template-columns: 1fr; } .compare-col.naive { border-right: none; border-bottom: 1px solid var(--border); } }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 18px; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  th, td { text-align: left; padding: 10px 14px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #FBFAF7; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+
+  /* PIPELINE FLOW */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .flow-node {
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--pipeline);
+    background: var(--card);
+    border-radius: 10px;
+    padding: 16px 20px;
+    position: relative;
+  }
+  .flow-arrow { text-align: center; color: var(--pipeline); font-size: 18px; margin: 2px 0; }
+  .flow-node h3 { margin: 0 0 6px; font-size: 15px; color: var(--pipeline); }
+  .flow-node .meta { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+
+  strong.term { color: var(--ink); background: #F0EEE7; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
+
+  footer {
+    margin-top: 50px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .hero { background: #2F5D62 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card, table { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- A. HERO -->
+  <div class="hero">
+    <h1>LLM Evaluation Systems</h1>
+    <div class="sub">Mental Model Reference · 10 Modules · Hamel Husain Series · Generated July 2026</div>
+    <div class="legend">
+      <div class="legend-item"><span class="swatch" style="background:var(--pipeline)"></span> Pipeline / Architecture</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--failure)"></span> Failure Modes</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--distinction)"></span> Key Distinctions</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--accent-gold)"></span> Decision Heuristics</div>
+    </div>
+  </div>
+
+  <!-- B. CORE PROBLEM -->
+  <h2 class="section"><span class="idx">A</span>The Core Problem</h2>
+  <div class="card">
+    <p><strong class="term">The problem this domain solves:</strong> LLM products plateau — and fail silently — when teams change behavior (prompts, fine-tuning, code) without a system to measure whether that change actually helped. Ad-hoc "vibe checks" cannot scale past a single person's working memory, and once product surface area grows, fixing one failure mode surfaces another (whack-a-mole) with no way to know if net quality improved.</p>
+    <p><strong class="term">The key reframe:</strong> Evaluation is not a QA checkpoint bolted onto the end of development — it is the mechanism that makes debugging and iteration possible at all. The eval system, the debugging infrastructure, and the fine-tuning data pipeline are, structurally, the same system.</p>
+  </div>
+  <div class="compare-card">
+    <div class="compare-col naive">
+      <h4>Naive Approach</h4>
+      <p>Track generic scores (helpfulness, coherence, toxicity) on a 1–5 scale. Pick metrics before looking at any real data. Delegate annotation to outsourced labelers or committees. Treat AI roadmaps like feature roadmaps with fixed ship dates.</p>
+    </div>
+    <div class="compare-col systematic">
+      <h4>Systematic Approach</h4>
+      <p>Read raw traces first (open coding), let failure categories emerge (axial coding), build binary pass/fail evaluators validated against one domain expert's judgment, and structure roadmaps around experiment cadence rather than deadlines.</p>
+    </div>
+  </div>
+
+  <!-- C. PIPELINE -->
+  <h2 class="section"><span class="idx">B</span>The Complete Pipeline</h2>
+  <div class="flow">
+
+    <div class="flow-node">
+      <span class="tag pipeline">Stage 1</span>
+      <h3>Trace Collection</h3>
+      <p>Every user interaction — messages, tool calls, retrievals, intermediate steps — logged as a complete <strong class="term">trace</strong>. If no real users exist yet, generate synthetic traces using structured dimensions (Features × Scenarios × Personas) rather than free-form LLM prompting.</p>
+      <div class="meta">Produces: raw material for error analysis. Connects to → Stage 2 via manual review.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+
+    <div class="flow-node">
+      <span class="tag pipeline">Stage 2</span>
+      <h3>Open Coding</h3>
+      <p>A single domain expert ("benevolent dictator") reads raw traces with zero predefined categories and writes free-form notes on anything wrong. No taxonomy imposed yet — the goal is discovery, not classification.</p>
+      <div class="meta">Captures: undiscovered failure patterns. Connects to → Stage 3 once ~30-50 traces reviewed.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+
+    <div class="flow-node">
+      <span class="tag pipeline">Stage 3</span>
+      <h3>Axial Coding</h3>
+      <p>Group open-coding notes into a named failure taxonomy; count frequency per category. Continue until <strong class="term">theoretical saturation</strong> (~100 traces reviewed, no new category in the last ~20). LLMs may draft groupings after human open coding — never before, never unsupervised.</p>
+      <div class="meta">Decides: which failure modes are worth building evaluators for. Connects to → Stage 4.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+
+    <div class="flow-node">
+      <span class="tag pipeline">Stage 4</span>
+      <h3>Binary Judgment + Critique (Critique Shadowing)</h3>
+      <p>Domain expert makes a pass/fail call per trace plus a detailed critique explaining reasoning. This step exists because <strong class="term">criteria drift</strong> makes it impossible to define evaluation criteria before seeing real outputs — grading is what surfaces the actual standard.</p>
+      <div class="meta">Produces: labeled ground truth + few-shot material. Connects to → Stage 5.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+
+    <div class="flow-node">
+      <span class="tag pipeline">Stage 5</span>
+      <h3>LLM-as-Judge Construction</h3>
+      <p>Build a judge prompt using the expert's actual critiques as few-shot examples. Iterate until agreement (measured via TPR/TNR, not raw agreement if classes are imbalanced) exceeds ~90%. Never fine-tune the judge by default — prefer prompt iteration.</p>
+      <div class="meta">Key primitive: few-shot critique examples, not abstract instructions. Connects to → Stage 6.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+
+    <div class="flow-node">
+      <span class="tag pipeline">Stage 6</span>
+      <h3>Deployment: CI/CD vs. Production</h3>
+      <p><strong class="term">CI/CD</strong>: small curated datasets with known reference answers → cheap deterministic assertions, run every commit. <strong class="term">Production</strong>: sampled live traffic with no reference answer → reference-free LLM-judge, run asynchronously on a subset.</p>
+      <div class="meta">APIs/patterns: guardrails (synchronous, fast, deterministic) vs. evaluators (asynchronous, judgment-based). Connects to → Stage 7.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+
+    <div class="flow-node">
+      <span class="tag pipeline">Stage 7</span>
+      <h3>Feedback Loop</h3>
+      <p>New failure patterns discovered in production become new CI test cases. Roadmap operates on experiment cadence (fixed check-in intervals + pivot/ship decision points), not fixed feature-ship dates — because AI progress is not reliably time-boxable.</p>
+      <div class="meta">Closes the loop back to → Stage 2 (re-run error analysis on fresh traces every 2-4 weeks).</div>
+    </div>
+
+  </div>
+
+  <!-- D. FAILURE MODES -->
+  <h2 class="section"><span class="idx">C</span>Silent &amp; Non-Silent Failure Modes</h2>
+
+  <div class="card failure">
+    <span class="tag failure">Module 1</span>
+    <h3>Whack-a-Mole Plateau</h3>
+    <p><strong>What happens:</strong> Fixing one visible failure causes an unrelated one to surface elsewhere; net quality may be flat or worse. <strong>Why no error fires:</strong> without systematic tracing, there's no signal connecting the fix to a regression elsewhere. <strong>Prevention:</strong> Build the eval/debug loop before scaling prompt changes.</p>
+  </div>
+
+  <div class="card failure">
+    <span class="tag failure">Module 3</span>
+    <h3>Premature Categorization</h3>
+    <p><strong>What happens:</strong> Picking failure categories (e.g. "hallucination rate") before reading raw data causes real failure patterns (e.g. date-parsing bugs) to be ignored or misfiled into the wrong bucket. <strong>Why no error fires:</strong> the metric reports a clean number even while missing the actual problem entirely. <strong>Prevention:</strong> Open code first; only categorize after saturation.</p>
+  </div>
+
+  <div class="card failure">
+    <span class="tag failure">Module 3</span>
+    <h3>LLM Taxonomy Merge Error</h3>
+    <p><strong>What happens:</strong> An LLM asked to build a failure taxonomy merges distinct failure types (e.g. "app crashes after login" + "login is slow") into one bucket ("login issues") because they're linguistically similar. <strong>Why no error fires:</strong> the taxonomy looks coherent and complete. <strong>Prevention:</strong> Human must validate every LLM-drafted taxonomy before use.</p>
+  </div>
+
+  <div class="card failure">
+    <span class="tag failure">Module 6</span>
+    <h3>Generic Metric Drift</h3>
+    <p><strong>What happens:</strong> A proxy score (e.g. "helpfulness: 3.4→3.7") rises while real task success stays flat, because the metric rewards tone/format/politeness rather than task completion. <strong>Why no error fires:</strong> the dashboard shows genuine upward movement — it's measuring the wrong thing, not malfunctioning. <strong>Prevention:</strong> Derive all metrics from error analysis on your own data; never adopt off-the-shelf generic scores as primary signal.</p>
+  </div>
+
+  <div class="card failure">
+    <span class="tag failure">Module 7</span>
+    <h3>Committee Ground-Truth Noise</h3>
+    <p><strong>What happens:</strong> Multiple annotators disagree on the same trace; whichever label lands in the training set becomes "ground truth" arbitrarily. <strong>Why no error fires:</strong> the dataset looks fully labeled — inconsistency is invisible unless inter-annotator agreement is explicitly measured. <strong>Prevention:</strong> Single domain expert by default; Cohen's Kappa + alignment sessions only if multiple annotators are unavoidable.</p>
+  </div>
+
+  <div class="card failure">
+    <span class="tag failure">Module 9</span>
+    <h3>Blended RAG Score Masking</h3>
+    <p><strong>What happens:</strong> A single quality score blends retrieval correctness and generation quality; a low score can't reveal whether the problem is "wrong documents found" or "right documents used poorly." <strong>Why no error fires:</strong> the score reports clearly — just not usefully. <strong>Prevention:</strong> Score retrieval (IR metrics: Recall@k, Precision@k, MRR) and generation (LLM-judge) separately.</p>
+  </div>
+
+  <div class="card failure">
+    <span class="tag failure">Module 10</span>
+    <h3>Feature-Roadmap False Failure</h3>
+    <p><strong>What happens:</strong> A project is killed at a fixed deadline because "nothing worked yet" — even when a breakthrough was weeks away. <strong>Why no error fires:</strong> the roadmap's only signal is elapsed time vs. deadline, which cannot distinguish "unsolvable" from "not yet solved." <strong>Prevention:</strong> Replace ship-dates with experiment cadence + explicit pivot/ship decision points.</p>
+  </div>
+
+  <!-- E. KEY DISTINCTIONS -->
+  <h2 class="section"><span class="idx">D</span>Key Distinctions</h2>
+
+  <table>
+    <tr><th>Property</th><th>Unit Tests (Level 1)</th><th>Human/Model Eval (Level 2)</th></tr>
+    <tr><td>Failure type caught</td><td>Objective, deterministic</td><td>Subjective, judgment-based</td></tr>
+    <tr><td>Cost</td><td>Milliseconds, near-free</td><td>Medium — human time or LLM-judge compute</td></tr>
+    <tr><td>Cadence</td><td>Every code change</td><td>Set periodic cadence (weekly/biweekly)</td></tr>
+  </table>
+
+  <table>
+    <tr><th>Property</th><th>CI/CD Evaluation</th><th>Production Evaluation</th></tr>
+    <tr><td>Reference answer</td><td>Known in advance</td><td>Does not exist</td></tr>
+    <tr><td>Method</td><td>Deterministic assertions</td><td>Reference-free LLM-judge</td></tr>
+    <tr><td>Scope</td><td>Small curated dataset (100+)</td><td>Sampled subset of live traffic</td></tr>
+  </table>
+
+  <table>
+    <tr><th>Property</th><th>Guardrails</th><th>Evaluators</th></tr>
+    <tr><td>Timing</td><td>Synchronous, in request path</td><td>Asynchronous, after response</td></tr>
+    <tr><td>Speed requirement</td><td>Milliseconds</td><td>Can be slow (batch)</td></tr>
+    <tr><td>Failure tolerance</td><td>Very low false-positive rate required</td><td>Tunable — depends on use case</td></tr>
+  </table>
+
+  <table>
+    <tr><th>Property</th><th>Cross-Product Generation</th><th>Direct LLM Generation</th></tr>
+    <tr><td>Best when</td><td>Most dimension combinations are valid</td><td>Many combinations are invalid/impossible</td></tr>
+    <tr><td>Risk</td><td>Wastes effort filtering nonsensical combos</td><td>Generic phrasing, misses rare valid edge cases</td></tr>
+  </table>
+
+  <table>
+    <tr><th>Property</th><th>RAG Retrieval Evaluation</th><th>RAG Generation Evaluation</th></tr>
+    <tr><td>Nature</td><td>Deterministic — a search problem</td><td>Non-deterministic — a reasoning problem</td></tr>
+    <tr><td>Metrics</td><td>Recall@k, Precision@k, MRR</td><td>LLM-judge, validated against human labels</td></tr>
+  </table>
+
+  <table>
+    <tr><th>Property</th><th>Feature-Based Roadmap</th><th>Experiment-Based Roadmap</th></tr>
+    <tr><td>Success criterion</td><td>Ship date hit</td><td>Cadence of check-ins maintained</td></tr>
+    <tr><td>Failure at checkpoint means</td><td>Project failed</td><td>Pivot the technique, keep exploring</td></tr>
+    <tr><td>Accountability form</td><td>Binary deadline</td><td>Bounded exploration with hard exit criteria</td></tr>
+  </table>
+
+  <!-- F. DECISION HEURISTICS -->
+  <h2 class="section"><span class="idx">E</span>Decision Heuristics</h2>
+  <div class="grid-2">
+    <div class="card heuristic"><h3>Saturation Rule</h3><p>Review at least 100 traces before drawing conclusions; stop discovering new categories if the last ~20 traces reveal nothing new.</p></div>
+    <div class="card heuristic"><h3>One Expert Rule</h3><p>Default to a single domain expert ("benevolent dictator") as final judgment authority — needing 5 experts to agree signals your product scope is too broad.</p></div>
+    <div class="card heuristic"><h3>Binary-First Rule</h3><p>Always start with pass/fail judgments plus critique. Only add numeric granularity for specific sub-components, never as a replacement for the binary call.</p></div>
+    <div class="card heuristic"><h3>Fix-Before-Build Rule</h3><p>Fix obvious, cheap-to-catch errors before investing in an LLM-as-judge. Reserve judges for failures that persist after obvious fixes.</p></div>
+    <div class="card heuristic"><h3>Validity-Density Rule</h3><p>Use cross-product generation when most dimension combinations are valid; use direct LLM generation when many combinations would be nonsensical.</p></div>
+    <div class="card heuristic"><h3>Reference-Availability Rule</h3><p>If a correct answer is knowable in advance, use deterministic assertions. If not, use a reference-free LLM-judge.</p></div>
+    <div class="card heuristic"><h3>Agent Two-Phase Rule</h3><p>Evaluate agents end-to-end (task success) first via error analysis; only build step-level transition matrices for the workflows error analysis flags as high-failure.</p></div>
+    <div class="card heuristic"><h3>Experiment Cadence Rule</h3><p>Replace fixed ship-dates with fixed check-in intervals and explicit pivot/ship decision points for any AI roadmap item with real technical uncertainty.</p></div>
+  </div>
+
+  <!-- G. MODULE REFERENCE TABLE -->
+  <h2 class="section"><span class="idx">F</span>Module Reference Table</h2>
+  <table>
+    <tr><th>#</th><th>Topic</th><th>Core Takeaway</th><th>Failure Risk</th></tr>
+    <tr><td>1</td><td>The Case for Evals</td><td>Evals scale engineering past one person's memory; skipping them causes invisible regressions</td><td>Whack-a-mole plateau</td></tr>
+    <tr><td>2</td><td>Three Levels of Evaluation</td><td>Unit tests, human/model eval, A/B testing are non-substitutable — distinct failure classes, cost dictates cadence</td><td>Using the wrong level for a given failure type</td></tr>
+    <tr><td>3</td><td>Error Analysis</td><td>Open code first, categorize only at saturation (~100 traces)</td><td>Premature categorization; LLM taxonomy merge errors</td></tr>
+    <tr><td>4</td><td>Dataset Design &amp; Synthetic Data</td><td>Split tuple generation (coverage) from language generation (phrasing)</td><td>Generic, repetitive synthetic data; missed edge cases</td></tr>
+    <tr><td>5</td><td>LLM-as-a-Judge: Critique Shadowing</td><td>Human critiques must precede the judge prompt due to criteria drift</td><td>Judge prompt built from assumption, not grounded truth</td></tr>
+    <tr><td>6</td><td>Eval Design Principles</td><td>Binary pass/fail + critique beats generic 1-5 scales and off-the-shelf metrics</td><td>Generic metric drift — score rises, real outcome flat</td></tr>
+    <tr><td>7</td><td>Human Annotation &amp; Tooling</td><td>One domain expert beats a committee</td><td>Committee ground-truth noise, paralysis, diffused ownership</td></tr>
+    <tr><td>8</td><td>Production Evals</td><td>CI uses deterministic checks (known reference); production uses reference-free LLM-judge</td><td>Applying the wrong method to the wrong stage</td></tr>
+    <tr><td>9</td><td>Domain-Specific Evals</td><td>Separate retrieval (IR metrics) from generation (LLM-judge); agents need end-to-end before step-level</td><td>Blended RAG scores; premature transition-matrix building</td></tr>
+    <tr><td>10</td><td>Field Guide Operating Principles</td><td>Roadmaps should count experiments, not features</td><td>Feature-roadmap false failure — killing a project before breakthrough</td></tr>
+  </table>
+
+  <!-- H. GLOSSARY -->
+  <h2 class="section"><span class="idx">G</span>Terminology Glossary</h2>
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td>Trace</td><td>Complete record of all actions, messages, tool calls, and retrievals from one user query through to final response.</td></tr>
+    <tr><td>Open Coding</td><td>Reading raw traces and writing free-form notes on failures without any predefined category.</td></tr>
+    <tr><td>Axial Coding</td><td>Grouping open-coding notes into a named failure taxonomy and counting frequency per category.</td></tr>
+    <tr><td>Theoretical Saturation</td><td>The point at which reviewing more traces stops revealing new failure categories.</td></tr>
+    <tr><td>Criteria Drift</td><td>The phenomenon where evaluation criteria only become fully defined through the act of grading real outputs — they cannot be fully specified in advance.</td></tr>
+    <tr><td>Critique Shadowing</td><td>The 7-step process of building an LLM judge by first collecting domain-expert pass/fail judgments with critiques, then using those as few-shot examples.</td></tr>
+    <tr><td>Benevolent Dictator</td><td>The single domain expert whose judgment is treated as ground truth for a given evaluation domain.</td></tr>
+    <tr><td>Guardrail</td><td>A fast, deterministic, synchronous check that blocks or corrects output before it reaches the user.</td></tr>
+    <tr><td>Evaluator</td><td>An asynchronous, judgment-based check that measures quality after a response is produced, without blocking it.</td></tr>
+    <tr><td>Recall@k / Precision@k / MRR</td><td>Information-retrieval metrics for RAG retrieval quality: how many relevant docs were found in the top k, how many retrieved docs were relevant, and how high the first relevant doc ranked.</td></tr>
+    <tr><td>Transition Failure Matrix</td><td>A matrix mapping last-successful-state to first-failure-state in an agentic workflow, used to locate failure hotspots.</td></tr>
+    <tr><td>Capability Funnel</td><td>A framework breaking AI performance into progressive levels of utility, from basic functionality to complete solution.</td></tr>
+    <tr><td>Experiment-Based Roadmap</td><td>A roadmap structured around a fixed cadence of experimentation and check-ins rather than fixed feature-ship dates.</td></tr>
+  </table>
+
+  <footer>LLM Evaluation Systems · 10 Modules · Generated with Claude</footer>
+
+</div>
+</body>
+</html>
