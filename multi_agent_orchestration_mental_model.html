@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multi-Agent Orchestration & LangGraph — Mental Model</title>
+<style>
+  :root{
+    --bg:#F7F6F2;
+    --card:#ffffff;
+    --border:#E0DED8;
+    --ink:#1f1d1a;
+    --muted:#6b6660;
+    --pipeline:#2f5d8a;     /* blue family — architecture/pipeline */
+    --pipeline-bg:#eaf1f8;
+    --fail:#b3402c;         /* coral/red — failure modes */
+    --fail-bg:#fbeae6;
+    --distinct:#6a4e8c;     /* third color — distinctions */
+    --distinct-bg:#f1ebf6;
+    --heur:#3c7a5e;         /* heuristics accent */
+    --heur-bg:#eaf5ef;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:40px 24px 80px;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height:1.55;
+  }
+  .wrap{max-width:960px; margin:0 auto;}
+  .hero{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:32px 36px; margin-bottom:28px;
+  }
+  .hero h1{margin:0 0 6px; font-size:28px; letter-spacing:-0.02em;}
+  .hero .sub{color:var(--muted); font-size:14px; margin-bottom:20px;}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; font-size:13px;}
+  .legend span{display:flex; align-items:center; gap:6px;}
+  .dot{width:11px; height:11px; border-radius:3px; display:inline-block;}
+  .dot.pipeline{background:var(--pipeline);}
+  .dot.fail{background:var(--fail);}
+  .dot.distinct{background:var(--distinct);}
+  .dot.heur{background:var(--heur);}
+
+  h2.section{
+    font-size:12px; text-transform:uppercase; letter-spacing:0.12em;
+    color:var(--muted); border-bottom:1px solid var(--border);
+    padding-bottom:8px; margin:36px 0 16px;
+  }
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:18px 20px; margin-bottom:14px;
+  }
+  .card.pipeline{border-left:4px solid var(--pipeline);}
+  .card.fail{border-left:4px solid var(--fail);}
+  .card.heur{border-left:4px solid var(--heur);}
+
+  .card h3{margin:0 0 8px; font-size:16px;}
+  .card p{margin:4px 0; font-size:14px;}
+  .card .label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-top:10px;}
+
+  .compare-row{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px;}
+  .compare-row .card{margin-bottom:0;}
+  .compare-row .card h3{color:var(--muted);}
+
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:13.5px;}
+  th,td{padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{background:#f0efe9; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted);}
+  tr:last-child td{border-bottom:none;}
+
+  .distinct-table th{background:var(--distinct-bg); color:var(--distinct);}
+  .fail-table th{background:var(--fail-bg); color:var(--fail);}
+
+  .heur-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:640px){.heur-grid, .compare-row{grid-template-columns:1fr;}}
+
+  .glossary dt{font-weight:600; margin-top:10px; font-size:14px;}
+  .glossary dd{margin:2px 0 0; font-size:13.5px; color:#3a3733;}
+
+  footer{
+    margin-top:48px; padding-top:16px; border-top:1px solid var(--border);
+    font-size:12px; color:var(--muted); text-align:center;
+  }
+  b{font-weight:600;}
+  code{background:#efeee8; padding:1px 5px; border-radius:4px; font-size:12.5px;}
+  @media print{
+    body{background:#fff;}
+    .card, table{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>Multi-Agent Orchestration & LangGraph</h1>
+    <div class="sub">5 modules · Generated July 2026</div>
+    <div class="legend">
+      <span><span class="dot pipeline"></span> Architecture / Pipeline</span>
+      <span><span class="dot fail"></span> Failure Modes</span>
+      <span><span class="dot distinct"></span> Key Distinctions</span>
+      <span><span class="dot heur"></span> Decision Heuristics</span>
+    </div>
+  </div>
+
+  <h2 class="section">B. The Core Problem</h2>
+  <div class="card">
+    <p><b>What it solves:</b> A single agent with more tools does not scale to multi-domain tasks. As task complexity grows (e.g. a cancelled connecting flight touching refund policy, hotel reimbursement, and a different airline's compensation rules), a single ReAct loop must reason about all of it in one growing, shared context.</p>
+    <p><b>Why naive approaches fail:</b> One flat trajectory means context dilution (attention split across unrelated policy domains), error compounding (an early mistake pollutes all later reasoning in the same trajectory), and no specialization (one agent prompted/tooled to be a generalist is worse at each sub-task than a purpose-built agent).</p>
+    <p><b>Key insight:</b> Multi-agent design is not about tool coverage — it is about <b>isolating reasoning contexts</b> so each agent stays sharp on one domain, and introducing an orchestration layer to recombine specialized outputs correctly.</p>
+  </div>
+  <div class="compare-row">
+    <div class="card"><h3>Naive Approach</h3><p>One agent, many tools, one flat context handles every sub-domain of a complex task in a single trajectory.</p></div>
+    <div class="card"><h3>Systematic Approach</h3><p>Specialized agents per domain, each with its own isolated context, coordinated by an orchestration layer that manages control flow and shared state.</p></div>
+  </div>
+
+  <h2 class="section">C. The Complete Architecture</h2>
+
+  <div class="card pipeline">
+    <h3>1. Nodes</h3>
+    <p>A unit of work in the graph — a function or an agent (e.g. Refund Agent, Hotel Agent, Router, Synthesizer). A node reads current shared state, does its work, and returns an <b>update</b> to that state.</p>
+    <p class="label">Connects to →</p>
+    <p>Edges determine which node executes next after this one completes.</p>
+  </div>
+
+  <div class="card pipeline">
+    <h3>2. Edges</h3>
+    <p>Legal transitions between nodes. Can be fixed (always A→B) or <b>conditional</b> — a function that inspects current state and decides which node runs next, evaluated fresh every time it fires. Edges are the only way execution moves; persistent state does not itself grant any node the ability to trigger another.</p>
+    <p class="label">Connects to →</p>
+    <p>Conditional edges are what make cycles (deliberate loops/retries) possible — something a linear chain structurally cannot do.</p>
+  </div>
+
+  <div class="card pipeline">
+    <h3>3. Shared State</h3>
+    <p>A single structured object every node reads from and writes to. Unlike a LangChain chain — where each node's output is the next node's input and then disappears — graph state <b>persists and accumulates</b> across the entire run. Any node can see what any earlier node wrote.</p>
+    <p class="label">Key primitive: Reducers</p>
+    <p>A reducer defines how a new write to a field combines with the existing value: <code>overwrite</code> (default, last-write-wins — correct only for single-writer fields like <code>booking_id</code>), <code>append</code> (for running logs like <code>messages</code> — every agent's contribution preserved), <code>sum</code> (for numeric accumulators like <code>total_compensation</code>).</p>
+  </div>
+
+  <div class="card pipeline">
+    <h3>4. Orchestration Pattern (topology)</h3>
+    <p><b>Supervisor</b> — one central node sees full state, decides which sub-agent(s) run, receives output, decides next step. Centralized, auditable. <b>Hierarchical</b> — nested supervisors; each team-lead node manages its own local sub-state, absorbing and compressing its team's output before passing a summary upward — solves context bloat at scale via state encapsulation. <b>Network</b> — no central authority; any agent can hand off to any other based on its own judgment. Flexible but no built-in termination or accountability guarantee.</p>
+  </div>
+
+  <div class="card pipeline">
+    <h3>5. Handoff Mechanism</h3>
+    <p>There is no direct agent-to-agent message channel. "Handoff" concretely means: Agent A returns an update → the reducer attached to each touched field merges it into shared state → the edge routes to the next node → that node reads the resulting state. Everything is mediated through state, never passed directly.</p>
+  </div>
+
+  <div class="card pipeline">
+    <h3>6. Checkpoints & Recursion Limits</h3>
+    <p>State is persisted (checkpointed) after each node <b>completes successfully</b> — node execution is atomic with respect to state: a crash mid-node writes nothing, so partial in-state writes don't occur. Recovery means re-running the failed node against the last good checkpoint. A recursion limit caps total steps to force termination even if a conditional edge's loop logic never resolves cleanly.</p>
+  </div>
+
+  <h2 class="section">D. Silent & Non-Silent Failure Modes</h2>
+
+  <div class="card fail">
+    <h3>State Field Collision (Overwrite on shared field)</h3>
+    <p><b>What happens:</b> Two agents write to the same state field (e.g. both write to <code>total_compensation</code>) without a reducer; the last write silently replaces the first.</p>
+    <p><b>Why no error fires:</b> The write succeeds mechanically — there's no type or logic violation, just lost data.</p>
+    <p class="label">Surfaced in</p><p>Module 2</p>
+    <p class="label">Prevention rule</p><p>Use separate fields per writer, or attach a <code>sum</code>/<code>append</code> reducer to any field multiple agents write to.</p>
+  </div>
+
+  <div class="card fail">
+    <h3>Overwrite Reducer on a Log Field</h3>
+    <p><b>What happens:</b> A running history field (e.g. <code>messages</code>) uses an overwrite reducer instead of append; every prior agent's reasoning, tool calls, and flags vanish the moment the next agent writes.</p>
+    <p><b>Why no error fires:</b> The graph completes normally and produces an answer — it just runs on incomplete information, and there's no trail left to detect it.</p>
+    <p class="label">Surfaced in</p><p>Module 4</p>
+    <p class="label">Prevention rule</p><p>Any field meant to hold accumulated history must use an append reducer, never overwrite. Treat log/audit fields as append-only by default.</p>
+  </div>
+
+  <div class="card fail">
+    <h3>Runaway / Infinite Cycle</h3>
+    <p><b>What happens:</b> A conditional edge's exit condition is buggy (e.g. never detects "enough info gathered"), so the graph loops between nodes indefinitely.</p>
+    <p><b>Why no error fires:</b> Each loop iteration is a valid, successful transition — nothing is technically wrong per-step, only in aggregate.</p>
+    <p class="label">Surfaced in</p><p>Module 5</p>
+    <p class="label">Prevention rule</p><p>Always set a recursion limit as a hard backstop, independent of trusting the loop-exit logic to be correct.</p>
+  </div>
+
+  <div class="card fail">
+    <h3>Side-Effect Non-Idempotency on Retry</h3>
+    <p><b>What happens:</b> A node performs a real-world action (e.g. calls a payment API to issue a refund) then crashes before returning its state update. Checkpointing recovery re-runs the entire node — re-triggering the real-world action a second time.</p>
+    <p><b>Why no error fires:</b> LangGraph's state atomicity guarantee is real (no partial state writes) — but it says nothing about external side effects, so the retry looks like normal, successful recovery.</p>
+    <p class="label">Surfaced in</p><p>Module 5</p>
+    <p class="label">Prevention rule</p><p>For any node with an external side effect, implement idempotency keys (e.g. check "has a refund already been issued for this complaint ID?" against an external record) before acting — state-level atomicity ≠ real-world action atomicity.</p>
+  </div>
+
+  <h2 class="section">E. Key Distinctions</h2>
+  <table class="distinct-table">
+    <tr><th>Property</th><th>Chain (LangChain)</th><th>Graph (LangGraph)</th></tr>
+    <tr><td>Data flow</td><td>Forward only, node-to-node; data disappears after use</td><td>Persistent shared state; accumulates across the run</td></tr>
+    <tr><td>Structure</td><td>Fixed linear sequence</td><td>Nodes + edges, can branch and cycle</td></tr>
+    <tr><td>Control flow</td><td>Fully static</td><td>Conditional edges decide next node dynamically</td></tr>
+    <tr><td>Collision risk</td><td>None — no shared store</td><td>Real — must use separate fields or reducers</td></tr>
+  </table>
+  <br>
+  <table class="distinct-table">
+    <tr><th>Property</th><th>Supervisor</th><th>Network</th></tr>
+    <tr><td>Decision authority</td><td>Centralized (one Router)</td><td>Decentralized (any agent decides)</td></tr>
+    <tr><td>Predictability</td><td>High — path is traceable</td><td>Low — emergent, unanticipated handoffs possible</td></tr>
+    <tr><td>Termination</td><td>Router explicitly ends run</td><td>No built-in "we're done" authority; cycle risk</td></tr>
+    <tr><td>Auditability</td><td>Clean decision log via Router</td><td>Scattered peer-to-peer path, hard to reconstruct</td></tr>
+    <tr><td>Best fit</td><td>Compliance-sensitive, production systems</td><td>Exploratory, flexible agent collaboration</td></tr>
+  </table>
+  <br>
+  <table class="distinct-table">
+    <tr><th>Property</th><th>Flat Supervisor</th><th>Hierarchical</th></tr>
+    <tr><td>State visibility</td><td>Top Router sees all raw sub-agent output</td><td>Top orchestrator sees only summarized state from team supervisors</td></tr>
+    <tr><td>Scaling behavior</td><td>Context bloat as agent count grows</td><td>Contained — each layer absorbs its own team's noise</td></tr>
+    <tr><td>Structural difference</td><td>None beyond node count (the misconception)</td><td>Real: state encapsulation / information-hiding boundaries per layer</td></tr>
+  </table>
+
+  <h2 class="section">F. Decision Heuristics</h2>
+  <div class="heur-grid">
+    <div class="card heur"><p>If a task spans more than one distinct knowledge/tool domain, split into specialized agents rather than adding tools to one agent.</p></div>
+    <div class="card heur"><p>Default every state field to <code>overwrite</code> only if you're certain exactly one agent will ever write it — otherwise pick a reducer explicitly.</p></div>
+    <div class="card heur"><p>Any running log/history/audit-trail field must use <code>append</code>, never overwrite — this is a silent-failure trap.</p></div>
+    <div class="card heur"><p>Choose Supervisor/Hierarchical over Network whenever the system needs auditability or regulatory accountability.</p></div>
+    <div class="card heur"><p>Switch flat Supervisor to Hierarchical once agent count grows large enough that the Router's context is bloated with raw sub-agent output.</p></div>
+    <div class="card heur"><p>Every conditional edge that enables a cycle needs a recursion limit as a backstop — never trust loop-exit logic alone.</p></div>
+    <div class="card heur"><p>Any node with a real-world side effect (payment, email, booking) needs an idempotency check — checkpointing does not protect against duplicate side effects on retry.</p></div>
+    <div class="card heur"><p>Design the Synthesizer/aggregation node explicitly — don't rely on a shared field to "just add up" without a reducer or explicit aggregation logic.</p></div>
+  </div>
+
+  <h2 class="section">G. Module Reference Table</h2>
+  <table>
+    <tr><th>#</th><th>Topic</th><th>Core Takeaway</th><th>Failure Risk</th></tr>
+    <tr><td>1</td><td>Why Multi-Agent</td><td>Isolating reasoning contexts per domain prevents dilution/compounding, enables specialization</td><td>Forcing one agent across domains degrades all of them</td></tr>
+    <tr><td>2</td><td>The State Graph Model</td><td>StateGraph = nodes + edges + persistent shared state (vs. chain's disappearing data)</td><td>Field collision from uncoordinated writes</td></tr>
+    <tr><td>3</td><td>Orchestration Patterns</td><td>Supervisor/Hierarchical = centralized, auditable; Network = decentralized, flexible but unaccountable</td><td>Network topology: no termination or audit authority</td></tr>
+    <tr><td>4</td><td>State Passing Mechanics</td><td>Handoff = update → reducer merge → next node reads state; no direct agent messaging</td><td>Wrong reducer choice — silent data/history loss</td></tr>
+    <tr><td>5</td><td>Control Flow & Failure Modes</td><td>Conditional edges enable cycles; checkpoints give node-level state atomicity, not side-effect atomicity</td><td>Runaway loops; duplicated real-world side effects on retry</td></tr>
+  </table>
+
+  <h2 class="section">H. Terminology Glossary</h2>
+  <div class="card">
+    <dl class="glossary">
+      <dt>Node</dt><dd>A unit of work in a graph (function or agent) that reads state and returns an update.</dd>
+      <dt>Edge</dt><dd>A legal transition between nodes; fixed or conditional.</dd>
+      <dt>Conditional edge</dt><dd>An edge governed by a function that inspects state and picks the next node dynamically, evaluated on every firing.</dd>
+      <dt>Shared state</dt><dd>A persistent structured object all nodes read from and write to across the entire graph run.</dd>
+      <dt>Reducer</dt><dd>A rule attached to a state field defining how new writes combine with the existing value (overwrite, append, sum, etc.).</dd>
+      <dt>Handoff</dt><dd>The mediated transfer of information between agents via state update + reducer + edge — never a direct message.</dd>
+      <dt>Supervisor pattern</dt><dd>Centralized orchestration — one node sees full state and decides all routing.</dd>
+      <dt>Hierarchical pattern</dt><dd>Nested supervisors, each managing a local sub-state, passing summarized results upward.</dd>
+      <dt>Network pattern</dt><dd>Decentralized orchestration — any agent can hand off directly to any other, no central authority.</dd>
+      <dt>Cycle</dt><dd>A graph path that revisits an earlier node (e.g. A→B→A), enabling deliberate retries/loops — impossible in a linear chain.</dd>
+      <dt>Recursion limit</dt><dd>A hard cap on total graph steps, forcing termination even if loop-exit logic never resolves.</dd>
+      <dt>Checkpoint</dt><dd>Persisted state snapshot saved after each node's successful completion, enabling resume-from-last-good-state on failure.</dd>
+      <dt>State atomicity</dt><dd>Guarantee that a node's state update is committed only if the node completes successfully — no partial writes.</dd>
+      <dt>Idempotency</dt><dd>Property ensuring a real-world action (e.g. issuing a refund) has the same effect whether performed once or retried multiple times; not provided automatically by LangGraph.</dd>
+    </dl>
+  </div>
+
+  <footer>Multi-Agent Orchestration & LangGraph · 5 modules · generated with Claude</footer>
+</div>
+</body>
+</html>
